@@ -17,7 +17,7 @@ import sys
  
 class LinksSpider(scrapy.Spider):
     name="links"
-    
+    topic = {}
     def start_requests(self):
         date_from = datetime.datetime(2016, 1, 1, 0, 0, 0)
         date_to = datetime.datetime(2016, 12, 31, 23, 59, 59)
@@ -36,24 +36,27 @@ class LinksSpider(scrapy.Spider):
         # 1002966: gia dinh
         # 1003784: suc khoe
         
-        categories = [1001002, 1002565, 1001007, 1002691, 1003497, 1001009, 1001006, 1003159, 1002592, 1002966, 1003784]
+        categories = {'the-gioi': 1001002, 'the-thao': 1002565, 'phap-luat': 1001007,
+                      'giai-tri': 1002691, 'giao-duc': 1003497, 'khoa-hoc': 1001009,
+                      'oto-xe-may': 1001006, 'kinh-doan': 1003159, 
+                      'so-hoa': 1002592, 'gia-dinh': 1002966, 'suc-khoe': 1003784}
         pattern = 'http://vnexpress.net/category/day/?cateid=%d&fromdate=%s&todate=%s'
         
-        for category in categories:
-            url = pattern % (category, date_from_epoch, date_to_epoch)
+        for category_name, category_number in categories.items():
+            url = pattern % (category_number, date_from_epoch, date_to_epoch)
             #self.log(url)
-            yield scrapy.Request(url=url, callback=self.parse)
+            yield scrapy.Request(url=url, callback=self.parse, meta={'category': category_name})
             
     def parse(self, response):
         links  = response.css("ul.list_news  div.title_news a::attr(href)").extract()
         
-        category = urlsplit(response.url).query.split('&')[0].split('=')[-1]
-        filename = '%s.txt' % category
+        category = str(response.meta['category'])            
+        filename = 'Links/%s.txt' % category
         with codecs.open(filename, 'a+', "utf-8") as f:
             for link in links:
                 f.write('%s\n' % link.strip())
         #self.log('Save file %s' % filename)
-        
+    
         NEXT_PAGE_SELECTOR = 'div.pagination_news  a.pa_next::attr(href)'
         next_page = response.css(NEXT_PAGE_SELECTOR).extract_first()
         #self.log(next_page)
@@ -93,40 +96,43 @@ class NewsSpider(scrapy.Spider):
                 # crawl data for each link
                 base = os.path.basename(file_name)
                 directory = os.path.splitext(base)[0]
-                for i in range(1, 2):
-                    page = links[i].split("/")[-1]
+                for link in links:
+                    page = link.split("/")[-1]
                     if page not in self.crawled_pages:
-                        yield scrapy.Request(url=links[i], callback=self.parse, meta={'directory': directory})
+                        yield scrapy.Request(url=link, callback=self.parse, meta={'directory': directory})
+                        break
                     
             
     def parse(self, response):
-        try:
-            container = response.css("div.main_content_detail")[0]
-            title = container.css("div.title_news h1::text").extract_first()
-            short_intro = container.css("h3.short_intro::text").extract_first()       
-            paragraphs = container.css("div.fck_detail p.Normal").extract()
+        container = response.css("div.main_content_detail")[0]
+        title = container.css("div.title_news h1::text").extract_first().strip()
+        short_intro = container.css(".short_intro::text").extract_first().strip()       
+        paragraphs = container.css("div.fck_detail p.Normal").extract()
+        
+        self.log(title)
+        self.log(short_intro)
+        
+        content = ''.join(paragraphs).strip()            
+        content = BeautifulSoup(content, "lxml").text
+        
+        if len(content) > 200:
+            directory = str(response.meta['directory'])
             
-            content = title.strip() + ' .' + short_intro.strip() + ''.join(paragraphs).strip()            
-            content = BeautifulSoup(content, "lxml").text
+            page = response.url.split("/")[-1]
+            filename = '%s/%s.txt' % (directory, page)
             
-            if len(content) > 0:
-                directory = str(response.meta['directory'])
-                
-                page = response.url.split("/")[-1]
-                filename = '%s/%s.txt' % (directory, page)
-                
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                
-                with codecs.open(filename, 'w+', "utf-8") as f:
-                    f.write(content)
-                self.log('Save file %s' % filename)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
             
+            with open(filename, 'wb+') as f:
+                f.write(title.encode("UTF-8"))
+                f.write(short_intro.encode("UTF-8"))
+                f.write(content.encode("UTF-8"))
+            
+            self.log('Save file %s' % filename)
+        
             # append history
             self.crawled_pages.append(page)
-        except:
-            self.save_crawled_pages()
-            pass
         
     def spider_closed(self, spider):
         self.log('Spider Closed')
