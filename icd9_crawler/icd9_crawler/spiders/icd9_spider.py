@@ -4,7 +4,6 @@ Attributes:
     logger (TYPE): Description
 """
 import scrapy
-import os
 import logging
 import pandas as pd
 
