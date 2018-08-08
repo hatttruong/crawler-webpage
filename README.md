@@ -48,7 +48,7 @@ There are 3 crawlers using **scrapy** including: batdongsan, vnexpress and icd9
         )
         ```
 
-    - when a page is rendered by calling javascript function (after ajax call done, for example), I use selenium [web-scraping-javascript-page-with-python](https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python)
+    - when a page is rendered by calling javascript function (after ajax call done, for example), I find some solutions here [web-scraping-javascript-page-with-python](https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python)
         + use requests-HTML(This solution is for Python's version 3.6 only (at the moment) (ERROR)
 
         ```
@@ -106,8 +106,6 @@ this crawler based on site map and url pattern
         -  product links: POST API
         -  product description & feature: GET, html response
         -  product full feature: POST API, JSON response
-    *  Lazada
-    *  Dienmayxanh
 * Output will be formatted as below:
     - **category-name_comments.csv**: comments of clients, including fields: ```product_id, comment_id, title, content, rating, thank_count```
     - **category-name_productlinks.csv**: links to products, including fields: ```product_id, product_link```
